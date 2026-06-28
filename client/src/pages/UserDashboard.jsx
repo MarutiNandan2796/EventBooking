@@ -9,6 +9,8 @@ const UserDashboard = () => {
     const navigate = useNavigate();
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedPass, setSelectedPass] = useState(null);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -122,7 +124,15 @@ const UserDashboard = () => {
                             <div className="flex shrink-0 items-center justify-between border-t border-white/5 bg-slate-950/40 p-4 px-6 text-sm">
                                 {booking.eventId && booking.status !== 'cancelled' ? (
                                     <>
-                                        <Link to={`/events/${booking.eventId._id}`} className="font-bold text-orange-400 hover:text-orange-300 transition">View Event</Link>
+                                        <Link to={`/events/${booking.eventId._id}`} className="font-bold text-slate-400 hover:text-white transition">View Event</Link>
+                                        {booking.status === 'confirmed' && (
+                                            <button 
+                                                onClick={() => setSelectedPass(booking)}
+                                                className="flex items-center gap-1.5 font-bold text-cyan-400 hover:text-cyan-300 transition"
+                                            >
+                                                <FaTicketAlt className="text-xs animate-pulse" /> View Pass
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => cancelBooking(booking._id)}
                                             className="flex items-center gap-1.5 font-semibold text-red-400 transition hover:text-red-300"
@@ -136,6 +146,101 @@ const UserDashboard = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Ticket Pass Modal */}
+            {selectedPass && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in-scale">
+                    <div className="relative w-full max-w-2xl rounded-[2rem] border border-white/10 bg-slate-900 shadow-2xl flex flex-col md:flex-row overflow-hidden">
+                        
+                        {/* Notch Circles (Notches) */}
+                        <div className="hidden md:block absolute left-[70%] -top-4 h-8 w-8 rounded-full bg-slate-950 border-b border-white/10" />
+                        <div className="hidden md:block absolute left-[70%] -bottom-4 h-8 w-8 rounded-full bg-slate-950 border-t border-white/10" />
+                        
+                        {/* Close button */}
+                        <button 
+                            onClick={() => setSelectedPass(null)} 
+                            className="absolute top-4 right-4 z-10 rounded-full bg-white/5 border border-white/10 p-2 text-slate-400 hover:text-white transition"
+                        >
+                            <FaTimesCircle className="text-lg" />
+                        </button>
+
+                        {/* Left Side: Main Ticket Info Stub */}
+                        <div className="flex-grow p-8 bg-gradient-to-br from-slate-900 to-slate-950 md:max-w-[70%] border-r-2 border-dashed border-white/10 relative">
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/10 px-3.5 py-1 text-[10px] font-bold uppercase tracking-[0.25em] text-orange-400">
+                                Eventora Booking Pass
+                            </div>
+                            
+                            <h2 className="text-2xl font-black text-white tracking-tight mb-6" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                                {selectedPass.eventId?.title}
+                            </h2>
+
+                            <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-xs mb-6">
+                                <div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Attendee</div>
+                                    <div className="mt-1 font-semibold text-slate-200">{user?.name}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Event Category</div>
+                                    <div className="mt-1 font-semibold text-slate-200 capitalize">{selectedPass.eventId?.category || 'General'}</div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Date</div>
+                                    <div className="mt-1 font-semibold text-slate-200">
+                                        {new Date(selectedPass.eventId?.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Location / Venue</div>
+                                    <div className="mt-1 font-semibold text-slate-200 truncate">{selectedPass.eventId?.location}</div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-white/5 flex items-center justify-between">
+                                <div>
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Ticket Price</div>
+                                    <div className="text-lg font-black text-gradient animate-logo-gradient">₹{selectedPass.amount}</div>
+                                </div>
+                                <div>
+                                    <button 
+                                        onClick={() => {
+                                            setDownloading(true);
+                                            setTimeout(() => {
+                                                setDownloading(false);
+                                                alert("Ticket Pass downloaded to your downloads folder!");
+                                            }, 1500);
+                                        }}
+                                        disabled={downloading}
+                                        className="rounded-xl bg-slate-800 border border-white/10 px-4 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white transition disabled:opacity-50"
+                                    >
+                                        {downloading ? 'Downloading...' : 'Download Pass'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Side: QR Code Stub */}
+                        <div className="md:w-[30%] bg-slate-950 p-8 flex flex-col justify-center items-center gap-4 text-center shrink-0">
+                            <div className="bg-white p-2.5 rounded-2xl shadow-lg border border-white/10">
+                                <img 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=130x130&color=030712&data=${encodeURIComponent(`https://eventora.com/tickets/${selectedPass._id}`)}`} 
+                                    alt="Verification QR Code"
+                                    className="h-32 w-32 object-contain"
+                                />
+                            </div>
+                            <div>
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-1">Ticket Reference</div>
+                                <div className="text-xs font-mono font-bold text-orange-400 uppercase">
+                                    EVT-{selectedPass._id.slice(-6).toUpperCase()}
+                                </div>
+                            </div>
+                            <div className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                                Verified
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             )}
         </div>
