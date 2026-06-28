@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import Chatbot from './components/Chatbot';
 import Home from './pages/Home';
 import EventDetail from './pages/EventDetail';
 import Login from './pages/Login';
@@ -28,6 +29,7 @@ function App() {
                         <Route path="*" element={<h1 className="text-3xl font-bold text-center mt-20">404 - Page Not Found</h1>} />
                     </Routes>
                 </main>
+                <Chatbot />
             </div>
         </Router>
     );
