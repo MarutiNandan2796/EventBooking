@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Event = require('./models/Event');
 const Booking = require('./models/Booking');
+const Review = require('./models/Review');
 
 dotenv.config();
 
@@ -91,6 +92,7 @@ const seedDatabase = async () => {
         await User.deleteMany();
         await Event.deleteMany();
         await Booking.deleteMany();
+        await Review.deleteMany();
         console.log('🗑️  Cleared existing data.');
 
         // Hash user passwords
@@ -126,6 +128,8 @@ const seedDatabase = async () => {
             const shuffledUsers = [...normalUsers].sort(() => 0.5 - Math.random());
             const selectedUsers = shuffledUsers.slice(0, randomCount);
 
+            const allocatedSeats = new Set();
+
             for (const user of selectedUsers) {
                 // Randomize statuses
                 const statuses = ['pending', 'confirmed', 'cancelled'];
@@ -139,12 +143,29 @@ const seedDatabase = async () => {
                     paymentStatus = 'paid';
                 }
 
+                // Generate a unique seat
+                let seatNumber;
+                let attempts = 0;
+                while (attempts < 100) {
+                    const rowLabel = String.fromCharCode(65 + Math.floor(Math.random() * Math.min(10, Math.ceil(event.totalSeats / 10))));
+                    const seatNum = Math.floor(Math.random() * 10) + 1;
+                    const possibleSeat = `${rowLabel}${seatNum}`;
+                    if (!allocatedSeats.has(possibleSeat)) {
+                        seatNumber = possibleSeat;
+                        allocatedSeats.add(seatNumber);
+                        break;
+                    }
+                    attempts++;
+                }
+                if (!seatNumber) seatNumber = `A${Math.floor(Math.random() * 10) + 1}`; // fallback
+
                 bookingsData.push({
                     userId: user._id,
                     eventId: event._id,
                     status: status,
                     paymentStatus: paymentStatus,
-                    amount: event.ticketPrice
+                    amount: event.ticketPrice,
+                    seatNumber
                 });
 
                 // Deduct available seats specifically for confirmed tickets!
@@ -155,8 +176,34 @@ const seedDatabase = async () => {
             }
         }
 
-        await Booking.insertMany(bookingsData);
-        console.log(`🎫 Inserted ${bookingsData.length} randomized dummy bookings (confirmed, pending, cancelled, paid, not_paid).`);
+        const insertedBookings = await Booking.insertMany(bookingsData);
+        console.log(`🎫 Inserted ${insertedBookings.length} randomized dummy bookings with unique seat assignments.`);
+
+        // Generate Reviews Data
+        const reviewsData = [];
+        const reviewComments = [
+            "This event was absolutely spectacular! Learned so much.",
+            "Great speakers and beautiful venue. Highly recommend it.",
+            "Well organized, although the parking was a bit tight. Overall 4/5.",
+            "Awesome atmosphere! Met so many great people.",
+            "Interesting topics, but wished it was longer. Will come again next year!",
+            "Incredible experience, the seating was comfortable and the team was helpful."
+        ];
+
+        // Seed reviews for confirmed bookings of events
+        for (const booking of insertedBookings) {
+            // Only add reviews for confirmed bookings, randomly (50% chance)
+            if (booking.status === 'confirmed' && Math.random() > 0.5) {
+                reviewsData.push({
+                    eventId: booking.eventId,
+                    userId: booking.userId,
+                    rating: Math.floor(Math.random() * 2) + 4, // 4 or 5 stars
+                    comment: reviewComments[Math.floor(Math.random() * reviewComments.length)]
+                });
+            }
+        }
+        await Review.insertMany(reviewsData);
+        console.log(`💬 Inserted ${reviewsData.length} mock event reviews.`);
 
         console.log('\n🚀 Database seeded successfully!');
         console.log('-------------------------------------------');
