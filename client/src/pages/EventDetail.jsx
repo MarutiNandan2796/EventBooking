@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/axios';
 import { AuthContext } from '../context/AuthContext';
-import { FaCalendarAlt, FaMapMarkerAlt, FaChair, FaMoneyBillWave, FaTicketAlt, FaLock, FaArrowRight } from 'react-icons/fa';
+import { FaCalendarAlt, FaMapMarkerAlt, FaChair, FaMoneyBillWave, FaTicketAlt, FaLock, FaArrowRight, FaStar } from 'react-icons/fa';
 
 const EventDetail = () => {
     const { id } = useParams();
@@ -16,23 +16,52 @@ const EventDetail = () => {
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
+    // Seating & Reviews states
+    const [occupiedSeats, setOccupiedSeats] = useState([]);
+    const [selectedSeat, setSelectedSeat] = useState(null);
+    const [reviews, setReviews] = useState([]);
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+    const [reviewLoading, setReviewLoading] = useState(false);
+    const [reviewError, setReviewError] = useState('');
+
     useEffect(() => {
-        const fetchEvent = async () => {
+        const fetchEventAndDetails = async () => {
             try {
                 const { data } = await api.get(`/events/${id}`);
                 setEvent(data);
+                
+                // Fetch occupied seats
+                try {
+                    const seatsRes = await api.get(`/bookings/event/${id}/seats`);
+                    setOccupiedSeats(seatsRes.data);
+                } catch (err) {
+                    console.error("Failed to load seats", err);
+                }
+
+                // Fetch reviews
+                try {
+                    const reviewsRes = await api.get(`/reviews/${id}`);
+                    setReviews(reviewsRes.data);
+                } catch (err) {
+                    console.error("Failed to load reviews", err);
+                }
             } catch (err) {
                 setError('Failed to load event details.');
             } finally {
                 setLoading(false);
             }
         };
-        fetchEvent();
+        fetchEventAndDetails();
     }, [id]);
 
     const handleBooking = async () => {
         if (!user) {
             navigate('/login');
+            return;
+        }
+        if (!selectedSeat) {
+            setError('Please select a seat from the seating chart.');
             return;
         }
         setBookingLoading(true);
@@ -45,9 +74,11 @@ const EventDetail = () => {
                 setShowOTP(true);
                 setSuccessMsg('OTP sent to your email. Please verify to confirm booking.');
             } else {
-                await api.post('/bookings', { eventId: event._id, otp });
+                await api.post('/bookings', { eventId: event._id, otp, seatNumber: selectedSeat });
                 setSuccessMsg('Booking requested! Awaiting admin confirmation.');
                 setShowOTP(false);
+                setOccupiedSeats([...occupiedSeats, { seatNumber: selectedSeat, status: 'pending', userId: user._id }]);
+                setSelectedSeat(null);
                 // Update local seats count dynamically after booking
                 setEvent({ ...event, availableSeats: event.availableSeats - 1 });
             }
@@ -58,10 +89,129 @@ const EventDetail = () => {
         }
     };
 
-    if (loading) return <div className="py-20 text-center text-xl font-semibold text-slate-700">Loading...</div>;
-    if (error && !event) return <div className="py-20 text-center text-xl text-red-500">{error || 'Event not found'}</div>;
+    const handleReviewSubmit = async (e) => {
+        e.preventDefault();
+        setReviewLoading(true);
+        setReviewError('');
+        try {
+            const { data } = await api.post(`/reviews/${id}`, {
+                rating: reviewRating,
+                comment: reviewComment
+            });
+            setReviews([{ ...data, userId: { name: user.name } }, ...reviews]);
+            setReviewComment('');
+            setReviewRating(5);
+        } catch (err) {
+            setReviewError(err.response?.data?.message || 'Failed to submit review');
+        } finally {
+            setReviewLoading(false);
+        }
+    };
 
-    const isSoldOut = event.availableSeats <= 0;
+    // Render dynamic seating grid (10 seats per row)
+    const renderSeatingGrid = () => {
+        if (!event) return null;
+        const totalSeats = event.totalSeats;
+        const cols = 10;
+        const rowCount = Math.ceil(totalSeats / cols);
+        const gridRows = [];
+
+        for (let i = 0; i < rowCount; i++) {
+            const rowLabel = String.fromCharCode(65 + i); // A, B, C...
+            const rowSeats = [];
+            const seatsInThisRow = Math.min(cols, totalSeats - i * cols);
+            for (let j = 1; j <= seatsInThisRow; j++) {
+                rowSeats.push(`${rowLabel}${j}`);
+            }
+            gridRows.push({ label: rowLabel, seats: rowSeats });
+        }
+
+        return (
+            <div className="space-y-4 rounded-3xl border border-white/5 bg-slate-950/40 p-6 md:p-8 shadow-inner">
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                    <h4 className="text-sm font-bold text-white tracking-wider uppercase" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                        Select Your Seat
+                    </h4>
+                    <span className="text-xs text-orange-400 font-semibold">
+                        {selectedSeat ? `Selected Seat: ${selectedSeat}` : 'Choose a seat below'}
+                    </span>
+                </div>
+
+                {/* Legend */}
+                <div className="flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-wider py-2">
+                    <div className="flex items-center gap-2">
+                        <span className="h-4 w-4 rounded bg-slate-800 border border-white/10" />
+                        <span className="text-slate-400">Available</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="h-4 w-4 rounded bg-amber-500/20 border border-amber-500/30" />
+                        <span className="text-amber-400">Pending</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="h-4 w-4 rounded bg-red-500/20 border border-red-500/30" />
+                        <span className="text-red-400">Reserved</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="h-4 w-4 rounded bg-emerald-500 shadow-md shadow-emerald-500/20 animate-pulse" />
+                        <span className="text-emerald-400 font-bold">Selected</span>
+                    </div>
+                </div>
+
+                {/* Stage Indicator */}
+                <div className="relative my-6 flex items-center justify-center">
+                    <div className="w-4/5 rounded-b-full border-t-2 border-white/10 bg-slate-900/30 py-1.5 text-center text-[10px] font-bold uppercase tracking-[0.4em] text-slate-600">
+                        STAGE / SCREEN
+                    </div>
+                </div>
+
+                {/* Seats Grid */}
+                <div className="space-y-3 overflow-x-auto pb-4 scrollbar-thin">
+                    {gridRows.map(row => (
+                        <div key={row.label} className="flex items-center justify-center gap-2.5 min-w-[500px]">
+                            {/* Row Label */}
+                            <span className="w-6 text-center text-xs font-extrabold text-slate-500">{row.label}</span>
+                            
+                            {/* Row Seats */}
+                            <div className="flex items-center gap-2.5">
+                                {row.seats.map(seat => {
+                                    const occupied = occupiedSeats.find(s => s.seatNumber === seat);
+                                    const isPending = occupied && occupied.status === 'pending';
+                                    const isConfirmed = occupied && occupied.status === 'confirmed';
+                                    const isSelected = selectedSeat === seat;
+
+                                    let seatClass = "bg-slate-800 text-slate-300 border-white/5 hover:border-orange-500/30 hover:bg-slate-700/80";
+                                    if (isPending) {
+                                        seatClass = "bg-amber-500/10 text-amber-500/80 border-amber-500/20 cursor-not-allowed";
+                                    } else if (isConfirmed) {
+                                        seatClass = "bg-red-500/10 text-red-500/80 border-red-500/20 cursor-not-allowed";
+                                    } else if (isSelected) {
+                                        seatClass = "bg-emerald-500 text-slate-950 font-black border-emerald-500 shadow-md shadow-emerald-500/35 scale-105";
+                                    }
+
+                                    return (
+                                        <button
+                                            key={seat}
+                                            disabled={!!occupied && !isSelected}
+                                            type="button"
+                                            onClick={() => setSelectedSeat(seat)}
+                                            title={occupied ? `Seat ${seat} is ${occupied.status}` : `Select seat ${seat}`}
+                                            className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-bold transition duration-150 ${seatClass}`}
+                                        >
+                                            {seat.slice(1)}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const hasConfirmedBooking = user && occupiedSeats.some(s => (s.userId?._id || s.userId) === user._id && s.status === 'confirmed');
+    const hasReviewed = user && reviews.some(r => (r.userId?._id || r.userId) === user._id);
+    const canReview = hasConfirmedBooking && !hasReviewed;
 
     return (
         <div className="mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] border border-white/5 bg-slate-950/80 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl animate-fade-in-scale text-slate-100">
@@ -127,9 +277,12 @@ const EventDetail = () => {
                         </div>
                         <h3 className="mt-3 text-xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Secure OTP Protected Request</h3>
                         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-                            All seats are verified with a 2-step registration code. Tap once to send an OTP to your registered email address, verify the code, and submit your seat request.
+                            All seats are verified with a 2-step registration code. Choose an available seat in the seating chart, tap once to send an OTP to your email address, and confirm your request.
                         </p>
                     </div>
+
+                    {/* Interactive Seating Grid */}
+                    {renderSeatingGrid()}
                 </div>
 
                 {/* Right Checkout Sidebar */}
@@ -144,6 +297,13 @@ const EventDetail = () => {
                                 <FaTicketAlt className="text-lg" />
                             </div>
                         </div>
+
+                        {selectedSeat && (
+                            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-4 text-sm flex justify-between items-center animate-slide-up">
+                                <span className="font-bold text-slate-400">Selected Seat:</span>
+                                <span className="text-emerald-400 font-extrabold text-lg">{selectedSeat}</span>
+                            </div>
+                        )}
 
                         {showOTP && (
                             <div className="space-y-2 animate-slide-up opacity-0">
@@ -164,13 +324,13 @@ const EventDetail = () => {
                     <div className="pt-6 space-y-4">
                         <button
                             onClick={handleBooking}
-                            disabled={isSoldOut || bookingLoading || (showOTP && !otp)}
-                            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold transition duration-200 ${isSoldOut || (successMsg && !showOTP)
+                            disabled={isSoldOut || bookingLoading || (showOTP && !otp) || (!showOTP && !selectedSeat)}
+                            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold transition duration-200 ${isSoldOut || (successMsg && !showOTP) || (!showOTP && !selectedSeat)
                                 ? 'cursor-not-allowed bg-slate-800 text-slate-500 border border-white/5'
                                 : 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-lg shadow-orange-500/10 hover:scale-[1.01] hover:brightness-110'
                                 }`}
                         >
-                            {bookingLoading ? 'Processing request...' : (showOTP ? 'Confirm & Book Spot' : (successMsg && !showOTP ? 'Spot Requested' : (isSoldOut ? 'Sold Out' : 'Send Booking OTP')))}
+                            {bookingLoading ? 'Processing request...' : (showOTP ? 'Confirm & Book Spot' : (successMsg && !showOTP ? 'Spot Requested' : (isSoldOut ? 'Sold Out' : (!selectedSeat ? 'Select a Seat First' : 'Send Booking OTP'))))}
                             {!bookingLoading && !isSoldOut && <FaArrowRight className="text-sm" />}
                         </button>
 
@@ -180,6 +340,103 @@ const EventDetail = () => {
                         </div>
                     </div>
                 </aside>
+            </div>
+
+            {/* Reviews & Ratings Section */}
+            <div className="border-t border-white/5 p-6 md:p-10 lg:p-12 space-y-8">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-3" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                    Attendee Reviews
+                    {reviews.length > 0 && (
+                        <span className="text-sm font-semibold bg-white/5 border border-white/10 text-slate-300 rounded-full px-3 py-1 flex items-center gap-1.5">
+                            ★ {(reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)} ({reviews.length} reviews)
+                        </span>
+                    )}
+                </h3>
+
+                <div className="grid gap-8 md:grid-cols-[1.2fr_0.8fr]">
+                    {/* Reviews List */}
+                    <div className="space-y-6">
+                        {reviews.length === 0 ? (
+                            <p className="text-slate-500 italic py-4">No reviews yet for this event.</p>
+                        ) : (
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+                                {reviews.map(review => (
+                                    <div key={review._id} className="rounded-2xl border border-white/5 bg-slate-900/40 p-5 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-bold text-slate-200">{review.userId?.name || 'Anonymous User'}</span>
+                                            <span className="text-amber-400 font-bold text-sm">
+                                                {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-slate-400 leading-relaxed">{review.comment}</p>
+                                        <div className="text-[10px] text-slate-600">
+                                            {new Date(review.createdAt).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Review Form */}
+                    <div>
+                        {canReview ? (
+                            <form onSubmit={handleReviewSubmit} className="rounded-3xl border border-white/5 bg-slate-900/60 p-6 space-y-4">
+                                <h4 className="text-lg font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Share Your Experience</h4>
+                                <p className="text-xs text-slate-400 leading-relaxed">
+                                    Since you attended this event, your feedback is valuable to help others.
+                                </p>
+                                
+                                <div className="space-y-1">
+                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Rating</label>
+                                    <div className="flex gap-2">
+                                        {[1, 2, 3, 4, 5].map(star => (
+                                            <button
+                                                key={star}
+                                                type="button"
+                                                onClick={() => setReviewRating(star)}
+                                                className={`text-2xl transition hover:scale-110 ${star <= reviewRating ? 'text-amber-400' : 'text-slate-700'}`}
+                                            >
+                                                ★
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Your Comment</label>
+                                    <textarea
+                                        required
+                                        value={reviewComment}
+                                        onChange={e => setReviewComment(e.target.value)}
+                                        placeholder="Write your review here..."
+                                        className="w-full h-24 rounded-2xl border border-white/10 bg-slate-950/60 p-4 text-sm text-slate-100 placeholder:text-slate-600 outline-none transition focus:border-orange-500/50"
+                                    />
+                                </div>
+
+                                {reviewError && (
+                                    <p className="text-xs text-red-400 font-semibold">{reviewError}</p>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={reviewLoading}
+                                    className="w-full rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 py-3 text-sm font-bold text-slate-950 shadow-md hover:brightness-110 transition disabled:opacity-50"
+                                >
+                                    {reviewLoading ? 'Submitting...' : 'Post Review'}
+                                </button>
+                            </form>
+                        ) : hasReviewed ? (
+                            <div className="rounded-3xl border border-white/5 bg-slate-900/60 p-6 text-center text-sm text-slate-400 italic">
+                                Thank you! You have already reviewed this event.
+                            </div>
+                        ) : (
+                            <div className="rounded-3xl border border-white/5 bg-slate-900/60 p-6 text-center text-sm text-slate-400 italic">
+                                Only confirmed attendees can leave reviews for this event.
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

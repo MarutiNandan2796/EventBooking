@@ -11,6 +11,11 @@ const AdminDashboard = () => {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // Seating Map states for Admin
+    const [selectedEventForMap, setSelectedEventForMap] = useState(null);
+    const [mapSeats, setMapSeats] = useState([]);
+    const [mapLoading, setMapLoading] = useState(false);
+
     const [showEventForm, setShowEventForm] = useState(false);
     const [formData, setFormData] = useState({
         title: '', description: '', date: '', location: '', category: '', totalSeats: '', ticketPrice: '', image: ''
@@ -37,6 +42,124 @@ const AdminDashboard = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleOpenSeatingMap = async (eventObj) => {
+        setSelectedEventForMap(eventObj);
+        setMapLoading(true);
+        try {
+            const { data } = await api.get(`/bookings/event/${eventObj._id}/seats`);
+            setMapSeats(data);
+        } catch (error) {
+            console.error("Failed to load map seats", error);
+            alert("Could not load seating details for this event");
+        } finally {
+            setMapLoading(false);
+        }
+    };
+
+    const renderSeatingMapModal = () => {
+        if (!selectedEventForMap) return null;
+        const totalSeats = selectedEventForMap.totalSeats;
+        const cols = 10;
+        const rowCount = Math.ceil(totalSeats / cols);
+        const gridRows = [];
+
+        for (let i = 0; i < rowCount; i++) {
+            const rowLabel = String.fromCharCode(65 + i);
+            const rowSeats = [];
+            const seatsInThisRow = Math.min(cols, totalSeats - i * cols);
+            for (let j = 1; j <= seatsInThisRow; j++) {
+                rowSeats.push(`${rowLabel}${j}`);
+            }
+            gridRows.push({ label: rowLabel, seats: rowSeats });
+        }
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in-scale">
+                <div className="relative w-full max-w-4xl rounded-[2rem] border border-white/10 bg-slate-900 shadow-2xl p-6 md:p-8 flex flex-col max-h-[90vh]">
+                    <button 
+                        onClick={() => setSelectedEventForMap(null)} 
+                        className="absolute top-4 right-4 rounded-full bg-white/5 border border-white/10 p-2 text-slate-400 hover:text-white transition"
+                    >
+                        <FaTimes className="text-sm" />
+                    </button>
+
+                    <div className="mb-4">
+                        <div className="text-xs font-bold uppercase tracking-[0.25em] text-orange-400 mb-1">Live Seating Layout</div>
+                        <h2 className="text-2xl font-black text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                            {selectedEventForMap.title}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-1">Check occupied seats, pending requests, and current availability.</p>
+                    </div>
+
+                    {mapLoading ? (
+                        <div className="flex-grow flex items-center justify-center py-20 text-slate-400">Loading seating chart...</div>
+                    ) : (
+                        <div className="flex-grow overflow-y-auto space-y-6 pr-2 scrollbar-thin">
+                            {/* Legend */}
+                            <div className="flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-wider py-2 justify-center">
+                                <div className="flex items-center gap-2">
+                                    <span className="h-4 w-4 rounded bg-slate-800 border border-white/10" />
+                                    <span className="text-slate-400">Available</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="h-4 w-4 rounded bg-amber-500/20 border border-amber-500/30 animate-pulse" />
+                                    <span className="text-amber-400 font-semibold">Pending Request</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="h-4 w-4 rounded bg-red-500/20 border border-red-500/30" />
+                                    <span className="text-red-400 font-semibold">Confirmed Booking</span>
+                                </div>
+                            </div>
+
+                            {/* Stage Indicator */}
+                            <div className="relative my-4 flex items-center justify-center">
+                                <div className="w-3/5 rounded-b-full border-t-2 border-white/10 bg-slate-950/40 py-1.5 text-center text-[9px] font-bold uppercase tracking-[0.4em] text-slate-600">
+                                    STAGE / SCREEN
+                                </div>
+                            </div>
+
+                            {/* Seats Grid */}
+                            <div className="space-y-3 overflow-x-auto pb-4 scrollbar-thin">
+                                {gridRows.map(row => (
+                                    <div key={row.label} className="flex items-center justify-center gap-2.5 min-w-[500px]">
+                                        <span className="w-6 text-center text-xs font-extrabold text-slate-500">{row.label}</span>
+                                        <div className="flex items-center gap-2">
+                                            {row.seats.map(seat => {
+                                                const occupied = mapSeats.find(s => s.seatNumber === seat);
+                                                const isPending = occupied && occupied.status === 'pending';
+                                                const isConfirmed = occupied && occupied.status === 'confirmed';
+
+                                                let seatClass = "bg-slate-800 text-slate-400 border-white/5";
+                                                let tooltip = `Seat ${seat}: Available`;
+                                                if (isPending) {
+                                                    seatClass = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+                                                    tooltip = `Seat ${seat}: Pending Request`;
+                                                } else if (isConfirmed) {
+                                                    seatClass = "bg-red-500/10 text-red-500 border-red-500/20";
+                                                    tooltip = `Seat ${seat}: Confirmed`;
+                                                }
+
+                                                return (
+                                                    <div 
+                                                        key={seat}
+                                                        title={tooltip}
+                                                        className={`group relative flex h-9 w-9 items-center justify-center rounded-lg border text-xs font-bold transition duration-150 ${seatClass}`}
+                                                    >
+                                                        {seat.slice(1)}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
     };
 
     const handleCreateEvent = async (e) => {
@@ -205,12 +328,20 @@ const AdminDashboard = () => {
                                                 </span>
                                             </div>
                                         </div>
-                                        <button 
-                                            onClick={() => handleDeleteEvent(event._id)} 
-                                            className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-950/20 px-4 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500 hover:text-white sm:w-auto"
-                                        >
-                                            <FaTrash className="text-xs" /> Delete
-                                        </button>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <button 
+                                                onClick={() => handleOpenSeatingMap(event)}
+                                                className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-950/20 px-3.5 py-2 text-xs font-bold text-cyan-400 transition hover:bg-cyan-500 hover:text-slate-950 sm:w-auto"
+                                            >
+                                                Seating Map
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteEvent(event._id)} 
+                                                className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-950/20 px-3.5 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500 hover:text-white sm:w-auto"
+                                            >
+                                                <FaTrash className="text-xs" /> Delete
+                                            </button>
+                                        </div>
                                     </li>
                                 ))
                             )}
@@ -252,6 +383,12 @@ const AdminDashboard = () => {
                                                 <span className="w-16 font-bold uppercase tracking-wider text-slate-500">Date:</span>
                                                 <span className="text-slate-300">{new Date(booking.bookedAt).toLocaleString()}</span>
                                             </p>
+                                            {booking.seatNumber && (
+                                                <p className="flex items-center gap-2">
+                                                    <span className="w-16 font-bold uppercase tracking-wider text-slate-500">Seat:</span>
+                                                    <span className="font-bold text-orange-400">{booking.seatNumber}</span>
+                                                </p>
+                                            )}
                                             {booking.eventId && (
                                                 <p className="mt-2 flex items-center gap-2 border-t border-white/5 pt-2 text-slate-400">
                                                     <span className="w-16 font-bold uppercase tracking-wider text-slate-500">Seats:</span>
@@ -280,6 +417,9 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             </div>
+            
+            {/* Seating Map Modal */}
+            {renderSeatingMapModal()}
         </div>
     );
 };
