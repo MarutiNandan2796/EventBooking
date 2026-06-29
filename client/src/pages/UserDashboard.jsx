@@ -114,6 +114,7 @@ const UserDashboard = () => {
                                         <div className="space-y-2 rounded-2xl bg-white/5 p-4 text-xs text-slate-400">
                                             <p><strong className="text-slate-300">Date:</strong> {new Date(booking.eventId.date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                                             <p><strong className="text-slate-300">Amount:</strong> {booking.amount === 0 ? <span className="text-emerald-400">Free</span> : `₹${booking.amount}`}</p>
+                                            {booking.seatNumber && <p><strong className="text-slate-300">Seat Selected:</strong> <span className="text-orange-400 font-bold">{booking.seatNumber}</span></p>}
                                             <p><strong className="text-slate-300">Requested:</strong> {new Date(booking.bookedAt).toLocaleDateString()}</p>
                                         </div>
                                     </>
@@ -174,9 +175,7 @@ const UserDashboard = () => {
                             
                             <h2 className="text-2xl font-black text-white tracking-tight mb-6" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
                                 {selectedPass.eventId?.title}
-                            </h2>
-
-                            <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-xs mb-6">
+                            </h2>                             <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-xs mb-6">
                                 <div>
                                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Attendee</div>
                                     <div className="mt-1 font-semibold text-slate-200">{user?.name}</div>
@@ -195,6 +194,12 @@ const UserDashboard = () => {
                                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Location / Venue</div>
                                     <div className="mt-1 font-semibold text-slate-200 truncate">{selectedPass.eventId?.location}</div>
                                 </div>
+                                {selectedPass.seatNumber && (
+                                    <div>
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Seat Number</div>
+                                        <div className="mt-1 font-extrabold text-orange-400">{selectedPass.seatNumber}</div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="pt-4 border-t border-white/5 flex items-center justify-between">
