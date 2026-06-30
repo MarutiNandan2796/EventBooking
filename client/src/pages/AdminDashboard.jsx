@@ -16,6 +16,13 @@ const AdminDashboard = () => {
     const [mapSeats, setMapSeats] = useState([]);
     const [mapLoading, setMapLoading] = useState(false);
 
+    // Promo Code states for Admin
+    const [promos, setPromos] = useState([]);
+    const [showPromoForm, setShowPromoForm] = useState(false);
+    const [promoFormData, setPromoFormData] = useState({
+        code: '', discountType: 'percentage', discountValue: '', expiryDate: ''
+    });
+
     const [showEventForm, setShowEventForm] = useState(false);
     const [formData, setFormData] = useState({
         title: '', description: '', date: '', location: '', category: '', totalSeats: '', ticketPrice: '', image: ''
@@ -31,12 +38,14 @@ const AdminDashboard = () => {
 
     const fetchData = async () => {
         try {
-            const [eventsRes, bookingsRes] = await Promise.all([
+            const [eventsRes, bookingsRes, promosRes] = await Promise.all([
                 api.get('/events'),
-                api.get('/bookings/my') // Admin gets all bookings
+                api.get('/bookings/my'), // Admin gets all bookings
+                api.get('/promos')
             ]);
             setEvents(eventsRes.data);
             setBookings(bookingsRes.data);
+            setPromos(promosRes.data);
         } catch (error) {
             console.error('Error fetching admin data', error);
         } finally {
@@ -205,6 +214,29 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleCreatePromoCode = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/promos', promoFormData);
+            setShowPromoForm(false);
+            setPromoFormData({ code: '', discountType: 'percentage', discountValue: '', expiryDate: '' });
+            fetchData();
+        } catch (error) {
+            alert(error.response?.data?.message || 'Error creating promo code');
+        }
+    };
+
+    const handleDeletePromoCode = async (id) => {
+        if (window.confirm('Are you sure you want to delete this promo code?')) {
+            try {
+                await api.delete(`/promos/${id}`);
+                fetchData();
+            } catch (error) {
+                alert(error.response?.data?.message || 'Error deleting promo code');
+            }
+        }
+    };
+
     if (loading) return <div className="py-20 text-center text-xl font-semibold text-slate-700">Loading admin panel...</div>;
 
     return (
@@ -220,16 +252,34 @@ const AdminDashboard = () => {
                         <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-4xl" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Admin Dashboard</h1>
                         <p className="mt-2 text-sm text-slate-400">Manage events and manually confirm bookings.</p>
                     </div>
-                    <button
-                        onClick={() => setShowEventForm(!showEventForm)}
-                        className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold transition duration-200 shadow-md md:w-auto ${
-                            showEventForm 
-                            ? 'bg-slate-800 text-slate-200 border border-white/10 hover:bg-slate-700' 
-                            : 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 hover:brightness-110'
-                        }`}
-                    >
-                        {showEventForm ? 'Cancel Creation' : <><FaPlus className="text-xs" /> Create New Event</>}
-                    </button>
+                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                        <button
+                            onClick={() => {
+                                setShowPromoForm(!showPromoForm);
+                                setShowEventForm(false);
+                            }}
+                            className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold transition duration-200 shadow-md ${
+                                showPromoForm 
+                                ? 'bg-slate-800 text-slate-200 border border-white/10 hover:bg-slate-700' 
+                                : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 hover:brightness-110'
+                            }`}
+                        >
+                            {showPromoForm ? 'Cancel Promo' : <><FaPlus className="text-xs" /> Manage Promo Codes</>}
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShowEventForm(!showEventForm);
+                                setShowPromoForm(false);
+                            }}
+                            className={`inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3.5 font-bold transition duration-200 shadow-md ${
+                                showEventForm 
+                                ? 'bg-slate-800 text-slate-200 border border-white/10 hover:bg-slate-700' 
+                                : 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 hover:brightness-110'
+                            }`}
+                        >
+                            {showEventForm ? 'Cancel Creation' : <><FaPlus className="text-xs" /> Create New Event</>}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -297,6 +347,111 @@ const AdminDashboard = () => {
                             <FaPlus className="text-sm" /> Publish Event
                         </button>
                     </form>
+                </div>
+            )}
+
+            {/* Manage Promo Codes Section */}
+            {showPromoForm && (
+                <div className="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 rounded-[2rem] border border-white/5 bg-slate-900/60 p-6 md:p-8 backdrop-blur-xl shadow-2xl animate-fade-in-scale">
+                    {/* Create Promo Code */}
+                    <div className="space-y-6">
+                        <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Create Promo Code</h2>
+                        <form onSubmit={handleCreatePromoCode} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Code</label>
+                                <input
+                                    required
+                                    type="text"
+                                    placeholder="e.g. WELCOME200"
+                                    className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3.5 text-slate-100 placeholder:text-slate-700 outline-none transition focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
+                                    value={promoFormData.code}
+                                    onChange={e => setPromoFormData({ ...promoFormData, code: e.target.value.toUpperCase() })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Discount Type</label>
+                                    <select
+                                        className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3.5 text-slate-100 outline-none transition focus:border-orange-500/50"
+                                        value={promoFormData.discountType}
+                                        onChange={e => setPromoFormData({ ...promoFormData, discountType: e.target.value })}
+                                    >
+                                        <option value="percentage">Percentage (%)</option>
+                                        <option value="flat">Flat Price (₹)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Value</label>
+                                    <input
+                                        required
+                                        type="number"
+                                        placeholder="Value"
+                                        className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3.5 text-slate-100 placeholder:text-slate-700 outline-none transition focus:border-orange-500/50"
+                                        value={promoFormData.discountValue}
+                                        onChange={e => setPromoFormData({ ...promoFormData, discountValue: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Expiration Date</label>
+                                <input
+                                    required
+                                    type="date"
+                                    className="w-full rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3.5 text-slate-100 outline-none transition focus:border-orange-500/50"
+                                    value={promoFormData.expiryDate}
+                                    onChange={e => setPromoFormData({ ...promoFormData, expiryDate: e.target.value })}
+                                />
+                            </div>
+
+                            <button type="submit" className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 py-4 font-bold text-slate-950 shadow-lg hover:brightness-110">
+                                <FaPlus className="text-sm" /> Generate Promo Code
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* Active Promo Codes List */}
+                    <div className="flex flex-col">
+                        <h2 className="mb-6 flex items-center gap-3 text-2xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>
+                            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 border border-white/10 text-xs font-bold text-slate-300">{promos.length}</span>
+                            Active Promo Codes
+                        </h2>
+                        <div className="overflow-hidden rounded-3xl border border-white/5 bg-slate-950/40 shadow-lg flex-grow">
+                            <ul className="max-h-[350px] divide-y divide-white/5 overflow-y-auto">
+                                {promos.length === 0 ? (
+                                    <li className="p-6 text-center text-slate-500">No promo codes created yet.</li>
+                                ) : (
+                                    promos.map(promo => {
+                                        const isExpired = new Date(promo.expiryDate) < new Date();
+                                        return (
+                                            <li key={promo._id} className="flex flex-col gap-4 p-5 transition hover:bg-white/5 sm:flex-row sm:items-center sm:justify-between">
+                                                <div>
+                                                    <div className="flex items-center gap-2.5">
+                                                        <span className="font-extrabold text-orange-400 tracking-wider text-sm">{promo.code}</span>
+                                                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${isExpired ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                                                            {isExpired ? 'Expired' : 'Active'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-400 mt-1">
+                                                        Discount: <strong className="text-slate-200">{promo.discountType === 'percentage' ? `${promo.discountValue}%` : `₹${promo.discountValue}`}</strong>
+                                                        <span className="mx-2">•</span>
+                                                        Expires: <strong className="text-slate-200">{new Date(promo.expiryDate).toLocaleDateString()}</strong>
+                                                    </p>
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleDeletePromoCode(promo._id)} 
+                                                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-red-500/20 bg-red-950/20 px-3.5 py-2 text-xs font-bold text-red-400 transition hover:bg-red-500 hover:text-white sm:w-auto"
+                                                >
+                                                    <FaTrash className="text-xs" /> Delete
+                                                </button>
+                                            </li>
+                                        );
+                                    })
+                                )}
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             )}
 

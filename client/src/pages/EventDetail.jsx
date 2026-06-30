@@ -25,6 +25,11 @@ const EventDetail = () => {
     const [reviewLoading, setReviewLoading] = useState(false);
     const [reviewError, setReviewError] = useState('');
 
+    // Promo Code states
+    const [promoCodeInput, setPromoCodeInput] = useState('');
+    const [appliedPromo, setAppliedPromo] = useState(null);
+    const [discountAmount, setDiscountAmount] = useState(0);
+
     useEffect(() => {
         const fetchEventAndDetails = async () => {
             try {
@@ -74,11 +79,19 @@ const EventDetail = () => {
                 setShowOTP(true);
                 setSuccessMsg('OTP sent to your email. Please verify to confirm booking.');
             } else {
-                await api.post('/bookings', { eventId: event._id, otp, seatNumber: selectedSeat });
+                await api.post('/bookings', { 
+                    eventId: event._id, 
+                    otp, 
+                    seatNumber: selectedSeat,
+                    promoCode: appliedPromo ? appliedPromo.code : undefined
+                });
                 setSuccessMsg('Booking requested! Awaiting admin confirmation.');
                 setShowOTP(false);
                 setOccupiedSeats([...occupiedSeats, { seatNumber: selectedSeat, status: 'pending', userId: user._id }]);
                 setSelectedSeat(null);
+                setAppliedPromo(null);
+                setDiscountAmount(0);
+                setPromoCodeInput('');
                 // Update local seats count dynamically after booking
                 setEvent({ ...event, availableSeats: event.availableSeats - 1 });
             }
@@ -86,6 +99,30 @@ const EventDetail = () => {
             setError(err.response?.data?.message || 'Booking failed');
         } finally {
             setBookingLoading(false);
+        }
+    };
+
+    const handleApplyPromo = async () => {
+        setError('');
+        setSuccessMsg('');
+        if (!promoCodeInput.trim()) return;
+
+        try {
+            const { data } = await api.post('/promos/validate', { code: promoCodeInput });
+            setAppliedPromo(data);
+            
+            let discount = 0;
+            if (data.discountType === 'percentage') {
+                discount = (event.ticketPrice * data.discountValue) / 100;
+            } else {
+                discount = data.discountValue;
+            }
+            setDiscountAmount(discount);
+            setSuccessMsg(`Promo code ${data.code} applied successfully!`);
+        } catch (err) {
+            setAppliedPromo(null);
+            setDiscountAmount(0);
+            setError(err.response?.data?.message || 'Invalid or expired promo code');
         }
     };
 
@@ -302,6 +339,64 @@ const EventDetail = () => {
                             <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-4 text-sm flex justify-between items-center animate-slide-up">
                                 <span className="font-bold text-slate-400">Selected Seat:</span>
                                 <span className="text-emerald-400 font-extrabold text-lg">{selectedSeat}</span>
+                            </div>
+                        )}
+
+                        {/* Promo Code checkout input */}
+                        {selectedSeat && !showOTP && event.ticketPrice > 0 && (
+                            <div className="space-y-2 border-t border-white/5 pt-4 animate-slide-up">
+                                <label className="block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Promo Code</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="ENTER CODE"
+                                        className="flex-grow rounded-xl border border-white/10 bg-slate-950/60 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-orange-400 outline-none transition focus:border-orange-500/50"
+                                        value={promoCodeInput}
+                                        onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                                        disabled={appliedPromo}
+                                    />
+                                    {appliedPromo ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setAppliedPromo(null);
+                                                setDiscountAmount(0);
+                                                setPromoCodeInput('');
+                                                setSuccessMsg('');
+                                            }}
+                                            className="rounded-xl border border-red-500/25 bg-red-950/20 px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500 hover:text-white transition"
+                                        >
+                                            Remove
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={handleApplyPromo}
+                                            disabled={!promoCodeInput.trim()}
+                                            className="rounded-xl bg-orange-500/20 border border-orange-500/30 px-3.5 py-2 text-xs font-bold text-orange-400 hover:bg-orange-500 hover:text-slate-950 transition disabled:opacity-50"
+                                        >
+                                            Apply
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Price breakdown display */}
+                        {appliedPromo && (
+                            <div className="space-y-1.5 rounded-2xl bg-white/5 p-4 text-xs border border-white/5 animate-slide-up">
+                                <div className="flex justify-between text-slate-400">
+                                    <span>Original Price:</span>
+                                    <span>₹{event.ticketPrice}</span>
+                                </div>
+                                <div className="flex justify-between text-emerald-400 font-medium">
+                                    <span>Discount ({appliedPromo.code}):</span>
+                                    <span>-₹{discountAmount}</span>
+                                </div>
+                                <div className="flex justify-between text-white font-extrabold text-sm border-t border-dashed border-white/10 pt-2 mt-2">
+                                    <span>Final Price:</span>
+                                    <span>₹{Math.max(0, event.ticketPrice - discountAmount)}</span>
+                                </div>
                             </div>
                         )}
 
