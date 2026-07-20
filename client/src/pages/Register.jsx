@@ -66,12 +66,6 @@ const Register = () => {
                 </div>
                 <div className="relative z-10 grid gap-4 text-xs font-bold text-slate-900/90 mt-10 animate-slide-up opacity-0 delay-150">
                     <div className="rounded-2xl bg-white/20 border border-white/10 p-4 shadow-sm backdrop-blur-md transition hover:bg-white/30">
-                        Instant 1-Click registration
-                    </div>
-                    <div className="rounded-2xl bg-white/20 border border-white/10 p-4 shadow-sm backdrop-blur-md transition hover:bg-white/30">
-                        Responsive mobile-first UI
-                    </div>
-                    <div className="rounded-2xl bg-white/20 border border-white/10 p-4 shadow-sm backdrop-blur-md transition hover:bg-white/30">
                         Dashboard & Admin Access
                     </div>
                 </div>
