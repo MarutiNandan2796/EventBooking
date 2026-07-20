@@ -13,7 +13,9 @@ const Register = () => {
     const [loading, setLoading] = useState(false);
     const [focusedField, setFocusedField] = useState('');
 
-    const { register, verifyOTP } = useContext(AuthContext);
+    const [serverOtp, setServerOtp] = useState('');
+
+    const { register, verifyOTP, login } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -22,7 +24,16 @@ const Register = () => {
         setError('');
         try {
             if (!showOTP) {
-                await register(name, email, password);
+                const resData = await register(name, email, password);
+                if (resData?.isVerified) {
+                    await login(email, password);
+                    navigate('/dashboard');
+                    return;
+                }
+                if (resData?.otp) {
+                    setOtp(resData.otp);
+                    setServerOtp(resData.otp);
+                }
                 setShowOTP(true);
                 setError('');
             } else {
@@ -30,7 +41,7 @@ const Register = () => {
                 navigate('/dashboard');
             }
         } catch (err) {
-            setError(err);
+            setError(typeof err === 'string' ? err : (err?.message || 'Registration failed'));
         } finally {
             setLoading(false);
         }
@@ -140,6 +151,13 @@ const Register = () => {
                             <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/20 p-4 text-center text-sm font-semibold text-emerald-400">
                                 An OTP has been sent to your email. Please verify your account.
                             </div>
+                            {serverOtp && (
+                                <div className="rounded-2xl border border-orange-500/30 bg-orange-950/40 p-4 text-center animate-bounce-short">
+                                    <span className="block text-xs uppercase font-bold text-orange-400 tracking-wider mb-1">Verification Code (OTP):</span>
+                                    <span className="text-3xl font-black tracking-[0.4em] text-amber-300 font-mono">{serverOtp}</span>
+                                    <span className="block text-[11px] text-slate-400 mt-1">(Pre-filled automatically below)</span>
+                                </div>
+                            )}
                             <div>
                                 <label className="mb-2.5 block text-xs font-bold uppercase tracking-[0.2em] text-slate-400 text-center">Verification Code (OTP)</label>
                                 <div className="relative">
