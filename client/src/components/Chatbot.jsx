@@ -4,11 +4,11 @@ import { FaComments, FaTimes, FaPaperPlane, FaRobot, FaUser, FaInfoCircle, FaTic
 const QUICK_REPLIES = [
     {
         q: "How to book tickets?",
-        a: "Booking is simple! \n1. Select an event from the homepage.\n2. Click 'View Details'.\n3. Tap 'Send Booking OTP'.\n4. Retrieve the 6-digit code from your email.\n5. Enter the OTP and confirm to instantly request your seat."
+        a: "Booking is simple! \n1. Select an event from the homepage.\n2. Click 'View Details'.\n3. Select your seat from the chart.\n4. Click 'Confirm & Reserve Seat' to instantly book your spot."
     },
     {
-        q: "Why OTP verification?",
-        a: "Eventora uses double OTP authentication to ensure all seat reservations are made by verified human users. This prevents bot spam and guarantees everyone a fair opportunity to get tickets."
+        q: "Instant Seat Reservation?",
+        a: "Eventora ensures all seat reservations are verified instantly with real-time availability. Choose your seat and book in seconds."
     },
     {
         q: "Access Admin Dashboard?",
@@ -53,10 +53,10 @@ const Chatbot = () => {
         const lower = text.toLowerCase();
         
         if (lower.includes('book') || lower.includes('ticket') || lower.includes('seat')) {
-            return "To book a seat, click 'View Details' on any event, hit 'Send Booking OTP', verify the code sent to your email, and you're good to go!";
+            return "To book a seat, click 'View Details' on any event, choose your seat from the chart, and hit 'Confirm & Reserve Seat'!";
         }
         if (lower.includes('otp') || lower.includes('verification') || lower.includes('code')) {
-            return "Email OTPs are sent instantly. If you don't see it, please check your spam folder. It validates registrations and bookings.";
+            return "Verification codes are auto-completed instantly on screen for smooth 1-click booking and registration.";
         }
         if (lower.includes('admin') || lower.includes('panel') || lower.includes('dashboard')) {
             return "Admins (admin@eventora.com) can manage requests in the Admin Dashboard. Regular users (user@eventora.com) can track their tickets in the User Dashboard.";

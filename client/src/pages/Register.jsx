@@ -61,12 +61,12 @@ const Register = () => {
                         Join the fastest event booking flow.
                     </h2>
                     <p className="max-w-md text-sm leading-6 text-slate-900/80 animate-slide-up opacity-0 delay-100">
-                        Register once, verify with OTP, and get access to a cleaner dashboard for upcoming events and bookings.
+                        Register once and get instant access to a cleaner dashboard for upcoming events and bookings.
                     </p>
                 </div>
                 <div className="relative z-10 grid gap-4 text-xs font-bold text-slate-900/90 mt-10 animate-slide-up opacity-0 delay-150">
                     <div className="rounded-2xl bg-white/20 border border-white/10 p-4 shadow-sm backdrop-blur-md transition hover:bg-white/30">
-                        Secure OTP registration
+                        Instant 1-Click registration
                     </div>
                     <div className="rounded-2xl bg-white/20 border border-white/10 p-4 shadow-sm backdrop-blur-md transition hover:bg-white/30">
                         Responsive mobile-first UI

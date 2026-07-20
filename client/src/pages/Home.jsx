@@ -168,8 +168,8 @@ const Home = () => {
                                 <div className="text-xl font-bold">Live Audiences</div>
                             </div>
                             <div className="rounded-2xl border border-white/5 bg-white/5 p-4 backdrop-blur-sm transition duration-300 hover:border-violet-500/20">
-                                <div className="mb-2 flex items-center gap-2 text-violet-400"><FaShieldAlt /> <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">Secure</span></div>
-                                <div className="text-xl font-bold">OTP Protected</div>
+                                <div className="mb-2 flex items-center gap-2 text-violet-400"><FaShieldAlt /> <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">Instant</span></div>
+                                <div className="text-xl font-bold">Instant Booking</div>
                             </div>
                         </div>
                     </div>
@@ -229,7 +229,7 @@ const Home = () => {
                         <FaShieldAlt />
                     </div>
                     <h3 className="mb-2 text-xl font-bold text-slate-100">Secure Platform</h3>
-                    <p className="text-sm leading-6 text-slate-400">OTP-backed verification for registrations and bookings.</p>
+                    <p className="text-sm leading-6 text-slate-400">Instant verification and real-time seat availability for all bookings.</p>
                 </div>
             </div>
 

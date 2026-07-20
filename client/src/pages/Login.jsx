@@ -51,13 +51,13 @@ const Login = () => {
                         Welcome back to the <span className="text-gradient animate-logo-gradient font-black">event floor</span>.
                     </h2>
                     <p className="max-w-md text-sm leading-6 text-slate-400 animate-slide-up opacity-0 delay-100">
-                        Log in to manage bookings, verify OTPs, and continue where you left off.
+                        Log in to manage bookings, explore events, and continue where you left off.
                     </p>
                 </div>
                 <div className="relative z-10 grid gap-4 text-xs text-slate-400 pt-10 animate-slide-up opacity-0 delay-150">
                     <div className="rounded-2xl border border-white/5 bg-white/5 p-4 transition hover:border-white/10">
-                        <strong className="text-slate-200 block mb-1">Double Protected</strong>
-                        OTP verification is required for high-importance actions and registrations.
+                        <strong className="text-slate-200 block mb-1">Instant Access</strong>
+                        Fast and seamless entry to all your event bookings and registrations.
                     </div>
                     <div className="rounded-2xl border border-white/5 bg-white/5 p-4 transition hover:border-white/10">
                         <strong className="text-slate-200 block mb-1">One-Stop Management</strong>

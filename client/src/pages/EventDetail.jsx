@@ -312,9 +312,9 @@ const EventDetail = () => {
                             <FaLock className="text-orange-400" />
                             Booking details
                         </div>
-                        <h3 className="mt-3 text-xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Secure OTP Protected Request</h3>
+                        <h3 className="mt-3 text-xl font-bold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Instant Seat Reservation</h3>
                         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-                            All seats are verified with a 2-step registration code. Choose an available seat in the seating chart, tap once to send an OTP to your email address, and confirm your request.
+                            Choose an available seat in the seating chart below, click to reserve, and confirm your ticket request instantly.
                         </p>
                     </div>
 
@@ -425,7 +425,7 @@ const EventDetail = () => {
                                 : 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-lg shadow-orange-500/10 hover:scale-[1.01] hover:brightness-110'
                                 }`}
                         >
-                            {bookingLoading ? 'Processing request...' : (showOTP ? 'Confirm & Book Spot' : (successMsg && !showOTP ? 'Spot Requested' : (isSoldOut ? 'Sold Out' : (!selectedSeat ? 'Select a Seat First' : 'Send Booking OTP'))))}
+                            {bookingLoading ? 'Processing request...' : (showOTP ? 'Confirm & Book Spot' : (successMsg && !showOTP ? 'Spot Requested' : (isSoldOut ? 'Sold Out' : (!selectedSeat ? 'Select a Seat First' : 'Confirm & Reserve Seat'))))}
                             {!bookingLoading && !isSoldOut && <FaArrowRight className="text-sm" />}
                         </button>
 
