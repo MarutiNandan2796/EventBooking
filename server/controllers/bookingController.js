@@ -26,10 +26,9 @@ exports.bookEvent = async (req, res) => {
             return res.status(400).json({ message: 'Seat selection is required' });
         }
 
-        // Verify OTP explicitly before proceeding
-        const validOTP = await OTP.findOne({ email: req.user.email, otp, action: 'event_booking' });
-        if (!validOTP) {
-            return res.status(400).json({ message: 'Invalid or expired OTP for booking' });
+        // Clean up any pending OTP if provided
+        if (otp) {
+            await OTP.deleteOne({ email: req.user.email, otp, action: 'event_booking' });
         }
 
         const event = await Event.findById(eventId);
@@ -73,8 +72,6 @@ exports.bookEvent = async (req, res) => {
             amount: finalAmount,
             seatNumber
         });
-
-        await OTP.deleteOne({ _id: validOTP._id }); // cleanup
 
         res.status(201).json({ message: 'Booking request submitted', booking });
     } catch (error) {

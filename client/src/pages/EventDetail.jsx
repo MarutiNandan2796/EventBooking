@@ -68,7 +68,7 @@ const EventDetail = () => {
             return;
         }
         if (!selectedSeat) {
-            setError('Please select a seat from the seating chart.');
+            setError('Please select a seat from the seating chart first.');
             return;
         }
         setBookingLoading(true);
@@ -76,31 +76,18 @@ const EventDetail = () => {
         setSuccessMsg('');
 
         try {
-            if (!showOTP) {
-                const otpRes = await api.post('/bookings/send-otp');
-                if (otpRes?.data?.otp) {
-                    setOtp(otpRes.data.otp);
-                    setServerOtp(otpRes.data.otp);
-                }
-                setShowOTP(true);
-                setSuccessMsg('Verification code generated. Confirm below to complete booking.');
-            } else {
-                await api.post('/bookings', { 
-                    eventId: event._id, 
-                    otp, 
-                    seatNumber: selectedSeat,
-                    promoCode: appliedPromo ? appliedPromo.code : undefined
-                });
-                setSuccessMsg('🎉 Seat requested successfully! Awaiting admin confirmation.');
-                setShowOTP(false);
-                setOccupiedSeats([...occupiedSeats, { seatNumber: selectedSeat, status: 'pending', userId: user._id }]);
-                setSelectedSeat(null);
-                setAppliedPromo(null);
-                setDiscountAmount(0);
-                setPromoCodeInput('');
-                // Update local seats count dynamically after booking
-                setEvent(prev => ({ ...prev, availableSeats: Math.max(0, prev.availableSeats - 1) }));
-            }
+            await api.post('/bookings', { 
+                eventId: event._id, 
+                seatNumber: selectedSeat,
+                promoCode: appliedPromo ? appliedPromo.code : undefined
+            });
+            setSuccessMsg('🎉 Seat requested successfully! Awaiting admin confirmation.');
+            setOccupiedSeats(prev => [...prev, { seatNumber: selectedSeat, status: 'pending', userId: user._id }]);
+            setSelectedSeat(null);
+            setAppliedPromo(null);
+            setDiscountAmount(0);
+            setPromoCodeInput('');
+            setEvent(prev => ({ ...prev, availableSeats: Math.max(0, prev.availableSeats - 1) }));
         } catch (err) {
             setError(err.response?.data?.message || 'Booking failed');
         } finally {
@@ -434,39 +421,18 @@ const EventDetail = () => {
                             </div>
                         )}
 
-                        {showOTP && (
-                            <div className="space-y-3 animate-slide-up">
-                                {serverOtp && (
-                                    <div className="rounded-2xl border border-orange-500/30 bg-orange-950/40 p-3.5 text-center animate-bounce-short">
-                                        <span className="block text-[10px] uppercase font-bold text-orange-400 tracking-wider mb-1">Verification Code:</span>
-                                        <span className="text-2xl font-black tracking-[0.4em] text-amber-300 font-mono">{serverOtp}</span>
-                                        <span className="block text-[10px] text-slate-400 mt-1">(Pre-filled automatically)</span>
-                                    </div>
-                                )}
-                                <label className="block text-xs font-bold uppercase tracking-[0.2em] text-slate-400 text-center">Enter Code to Confirm</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="0 0 0 0 0 0"
-                                    className="w-full rounded-2xl border border-white/10 bg-slate-950/60 py-3.5 text-center text-lg font-bold tracking-[0.5em] text-orange-400 placeholder:text-slate-700 outline-none transition focus:border-orange-500/50 focus:ring-4 focus:ring-orange-500/10"
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
-                                    maxLength="6"
-                                />
-                            </div>
-                        )}
                     </div>
 
                     <div className="pt-6 space-y-4">
                         <button
                             onClick={handleBooking}
-                            disabled={isSoldOut || bookingLoading || (showOTP && !otp) || (!showOTP && !selectedSeat)}
-                            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold transition duration-200 ${isSoldOut || (successMsg && !showOTP) || (!showOTP && !selectedSeat)
+                            disabled={isSoldOut || bookingLoading || !selectedSeat}
+                            className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold transition duration-200 ${isSoldOut || !selectedSeat
                                 ? 'cursor-not-allowed bg-slate-800 text-slate-500 border border-white/5'
                                 : 'bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 shadow-lg shadow-orange-500/10 hover:scale-[1.01] hover:brightness-110'
                                 }`}
                         >
-                            {bookingLoading ? 'Processing request...' : (showOTP ? 'Confirm & Book Spot' : (successMsg && !showOTP ? 'Spot Requested' : (isSoldOut ? 'Sold Out' : (!selectedSeat ? 'Select a Seat First' : 'Confirm & Reserve Seat'))))}
+                            {bookingLoading ? 'Processing reservation...' : (isSoldOut ? 'Sold Out' : (!selectedSeat ? 'Select a Seat First' : 'Confirm & Reserve Seat'))}
                             {!bookingLoading && !isSoldOut && <FaArrowRight className="text-sm" />}
                         </button>
 
