@@ -32,11 +32,9 @@ exports.register = async (req, res) => {
 
         const otp = generateOTP();
         await OTP.create({ email, otp, action: 'account_verification' });
-        try {
-            await sendOTPEmail(email, otp, 'account_verification');
-        } catch (e) {
-            console.error('Email send failed:', e.message);
-        }
+        
+        // Non-blocking background email trigger
+        sendOTPEmail(email, otp, 'account_verification').catch(e => console.error('Email send failed:', e.message));
 
         if (autoVerify) {
             return res.status(201).json({
@@ -69,11 +67,10 @@ exports.login = async (req, res) => {
             const otp = generateOTP();
             await OTP.findOneAndDelete({ email: user.email, action: 'account_verification' });
             await OTP.create({ email: user.email, otp, action: 'account_verification' });
-            try {
-                await sendOTPEmail(user.email, otp, 'account_verification');
-            } catch (e) {
-                console.error('Email send failed:', e.message);
-            }
+            
+            // Non-blocking background email trigger
+            sendOTPEmail(user.email, otp, 'account_verification').catch(e => console.error('Email send failed:', e.message));
+
             return res.status(403).json({ message: `Account not verified. Verification OTP is ${otp}`, needsVerification: true, email: user.email, otp: otp });
         }
 

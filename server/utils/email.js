@@ -3,8 +3,18 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
+const hasValidEmailConfig = () => {
+    return process.env.EMAIL_USER && 
+           process.env.EMAIL_PASS && 
+           !process.env.EMAIL_USER.includes('your_email') && 
+           !process.env.EMAIL_USER.includes('yourgmail');
+};
+
 const transporter = nodemailer.createTransport({
     service: 'gmail',
+    connectionTimeout: 2000,
+    greetingTimeout: 2000,
+    socketTimeout: 3000,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -12,6 +22,10 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
+    if (!hasValidEmailConfig()) {
+        console.log('Skipping email send: EMAIL_USER or EMAIL_PASS not configured');
+        return;
+    }
     try {
         const mailOptions = {
             from: process.env.EMAIL_USER,
@@ -26,11 +40,15 @@ const sendBookingEmail = async (userEmail, userName, eventTitle) => {
         await transporter.sendMail(mailOptions);
         console.log('Email sent successfully to', userEmail);
     } catch (error) {
-        console.error('Error sending email:', error);
+        console.error('Error sending email:', error.message);
     }
 };
 
 const sendOTPEmail = async (userEmail, otp, type) => {
+    if (!hasValidEmailConfig()) {
+        console.log(`Skipping OTP email send (${otp}): EMAIL_USER or EMAIL_PASS not configured`);
+        return;
+    }
     try {
         const title = type === 'account_verification' ? 'Verify your Eventora Account' : 'Eventora Booking Verification';
         const msg = type === 'account_verification'
@@ -55,7 +73,7 @@ const sendOTPEmail = async (userEmail, otp, type) => {
         await transporter.sendMail(mailOptions);
         console.log(`OTP sent to ${userEmail} for ${type}`);
     } catch (error) {
-        console.error('Error sending OTP email:', error);
+        console.error('Error sending OTP email:', error.message);
     }
 };
 
