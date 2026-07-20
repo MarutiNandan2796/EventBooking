@@ -2,17 +2,19 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/axios';
 import { AuthContext } from '../context/AuthContext';
-import { FaCalendarAlt, FaMapMarkerAlt, FaChair, FaMoneyBillWave, FaTicketAlt, FaLock, FaArrowRight, FaStar } from 'react-icons/fa';
+import { FaCalendarAlt, FaMapMarkerAlt, FaChair, FaMoneyBillWave, FaTicketAlt, FaLock, FaArrowRight, FaStar, FaClock, FaCheckCircle, FaTag } from 'react-icons/fa';
 
 const EventDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+
     const [event, setEvent] = useState(null);
     const [loading, setLoading] = useState(true);
     const [bookingLoading, setBookingLoading] = useState(false);
     const [otp, setOtp] = useState('');
     const [showOTP, setShowOTP] = useState(false);
+    const [serverOtp, setServerOtp] = useState('');
     const [error, setError] = useState('');
     const [successMsg, setSuccessMsg] = useState('');
 
@@ -39,7 +41,7 @@ const EventDetail = () => {
                 // Fetch occupied seats
                 try {
                     const seatsRes = await api.get(`/bookings/event/${id}/seats`);
-                    setOccupiedSeats(seatsRes.data);
+                    setOccupiedSeats(seatsRes.data || []);
                 } catch (err) {
                     console.error("Failed to load seats", err);
                 }
@@ -47,7 +49,7 @@ const EventDetail = () => {
                 // Fetch reviews
                 try {
                     const reviewsRes = await api.get(`/reviews/${id}`);
-                    setReviews(reviewsRes.data);
+                    setReviews(reviewsRes.data || []);
                 } catch (err) {
                     console.error("Failed to load reviews", err);
                 }
@@ -75,9 +77,13 @@ const EventDetail = () => {
 
         try {
             if (!showOTP) {
-                await api.post('/bookings/send-otp');
+                const otpRes = await api.post('/bookings/send-otp');
+                if (otpRes?.data?.otp) {
+                    setOtp(otpRes.data.otp);
+                    setServerOtp(otpRes.data.otp);
+                }
                 setShowOTP(true);
-                setSuccessMsg('OTP sent to your email. Please verify to confirm booking.');
+                setSuccessMsg('Verification code generated. Confirm below to complete booking.');
             } else {
                 await api.post('/bookings', { 
                     eventId: event._id, 
@@ -85,7 +91,7 @@ const EventDetail = () => {
                     seatNumber: selectedSeat,
                     promoCode: appliedPromo ? appliedPromo.code : undefined
                 });
-                setSuccessMsg('Booking requested! Awaiting admin confirmation.');
+                setSuccessMsg('🎉 Seat requested successfully! Awaiting admin confirmation.');
                 setShowOTP(false);
                 setOccupiedSeats([...occupiedSeats, { seatNumber: selectedSeat, status: 'pending', userId: user._id }]);
                 setSelectedSeat(null);
@@ -93,7 +99,7 @@ const EventDetail = () => {
                 setDiscountAmount(0);
                 setPromoCodeInput('');
                 // Update local seats count dynamically after booking
-                setEvent({ ...event, availableSeats: event.availableSeats - 1 });
+                setEvent(prev => ({ ...prev, availableSeats: Math.max(0, prev.availableSeats - 1) }));
             }
         } catch (err) {
             setError(err.response?.data?.message || 'Booking failed');
@@ -148,7 +154,7 @@ const EventDetail = () => {
     // Render dynamic seating grid (10 seats per row)
     const renderSeatingGrid = () => {
         if (!event) return null;
-        const totalSeats = event.totalSeats;
+        const totalSeats = event.totalSeats || 100;
         const cols = 10;
         const rowCount = Math.ceil(totalSeats / cols);
         const gridRows = [];
@@ -170,7 +176,7 @@ const EventDetail = () => {
                         Select Your Seat
                     </h4>
                     <span className="text-xs text-orange-400 font-semibold">
-                        {selectedSeat ? `Selected Seat: ${selectedSeat}` : 'Choose a seat below'}
+                        {selectedSeat ? `Selected Seat: ${selectedSeat}` : 'Choose an available seat below'}
                     </span>
                 </div>
 
@@ -216,7 +222,7 @@ const EventDetail = () => {
                                     const isConfirmed = occupied && occupied.status === 'confirmed';
                                     const isSelected = selectedSeat === seat;
 
-                                    let seatClass = "bg-slate-800 text-slate-300 border-white/5 hover:border-orange-500/30 hover:bg-slate-700/80";
+                                    let seatClass = "bg-slate-800 text-slate-300 border-white/5 hover:border-orange-500/30 hover:bg-slate-700/80 cursor-pointer";
                                     if (isPending) {
                                         seatClass = "bg-amber-500/10 text-amber-500/80 border-amber-500/20 cursor-not-allowed";
                                     } else if (isConfirmed) {
@@ -246,6 +252,34 @@ const EventDetail = () => {
         );
     };
 
+    if (loading) {
+        return (
+            <div className="flex min-h-[65vh] flex-col items-center justify-center space-y-4">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent shadow-lg shadow-orange-500/20" />
+                <p className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400">Loading Event Details...</p>
+            </div>
+        );
+    }
+
+    if (!event) {
+        return (
+            <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-white/5 bg-slate-950/80 p-12 text-center shadow-2xl backdrop-blur-xl space-y-6">
+                <div className="inline-flex h-20 w-20 items-center justify-center rounded-3xl bg-orange-500/10 text-3xl text-orange-400 border border-orange-500/20">
+                    <FaTicketAlt />
+                </div>
+                <h2 className="text-3xl font-extrabold text-white" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>Event Not Found</h2>
+                <p className="text-slate-400 text-sm max-w-md mx-auto">The event you are looking for does not exist, has expired, or was removed.</p>
+                <button
+                    onClick={() => navigate('/')}
+                    className="rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-4 font-bold text-slate-950 shadow-lg shadow-orange-500/20 hover:scale-[1.02] transition"
+                >
+                    Explore Events
+                </button>
+            </div>
+        );
+    }
+
+    const isSoldOut = event.availableSeats <= 0;
     const hasConfirmedBooking = user && occupiedSeats.some(s => (s.userId?._id || s.userId) === user._id && s.status === 'confirmed');
     const hasReviewed = user && reviews.some(r => (r.userId?._id || r.userId) === user._id);
     const canReview = hasConfirmedBooking && !hasReviewed;
@@ -258,13 +292,13 @@ const EventDetail = () => {
                     <img src={event.image} alt={event.title} className="h-full w-full object-cover brightness-[0.8]" />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-6xl font-black uppercase tracking-[0.4em] text-slate-700/35">
-                        {event.category}
+                        {event.category || 'Event'}
                     </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
                 <div className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-orange-500/20 bg-orange-500/20 px-4 py-2 text-xs font-bold uppercase tracking-[0.35em] text-orange-400 backdrop-blur-md animate-slide-up opacity-0">
                     <FaTicketAlt className="text-orange-400" />
-                    {event.category}
+                    {event.category || 'Featured'}
                 </div>
                 <div className="absolute bottom-6 left-6 right-6 max-w-4xl space-y-3">
                     <h1 className="text-4xl font-extrabold leading-tight tracking-tight md:text-6xl text-white animate-slide-up opacity-0 delay-50" style={{ fontFamily: 'Space Grotesk, sans-serif' }}>{event.title}</h1>
@@ -294,14 +328,14 @@ const EventDetail = () => {
                             <div className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500">Ticket Price</div>
                             <div className="mt-2.5 flex items-center gap-3 text-base font-bold text-slate-200">
                                 <FaMoneyBillWave className="text-emerald-400 text-lg" />
-                                {event.ticketPrice === 0 ? <span className="text-emerald-400">Free</span> : <span className="text-gradient font-black">₹{event.ticketPrice}</span>}
+                                {event.ticketPrice === 0 ? <span className="text-emerald-400 font-extrabold">FREE</span> : <span className="text-gradient font-black">₹{event.ticketPrice}</span>}
                             </div>
                         </div>
                         <div className="rounded-2xl border border-white/5 bg-white/5 p-5 shadow-sm animate-slide-up opacity-0 delay-250 transition hover:border-white/10">
                             <div className="text-[10px] font-bold uppercase tracking-[0.35em] text-slate-500">Availability</div>
                             <div className="mt-2.5 flex items-center gap-3 text-base font-bold text-slate-200">
                                 <FaChair className="text-slate-400 text-lg" />
-                                <span className={event.availableSeats < 10 ? 'text-orange-400' : 'text-slate-200'}>{event.availableSeats}</span>
+                                <span className={event.availableSeats < 10 ? 'text-orange-400 font-extrabold' : 'text-slate-200'}>{event.availableSeats}</span>
                                 <span className="text-slate-500 font-medium">/ {event.totalSeats} seats left</span>
                             </div>
                         </div>
@@ -349,7 +383,7 @@ const EventDetail = () => {
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
-                                        placeholder="ENTER CODE"
+                                        placeholder="ENTER CODE (e.g. WELCOME100)"
                                         className="flex-grow rounded-xl border border-white/10 bg-slate-950/60 px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-orange-400 outline-none transition focus:border-orange-500/50"
                                         value={promoCodeInput}
                                         onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
@@ -401,8 +435,15 @@ const EventDetail = () => {
                         )}
 
                         {showOTP && (
-                            <div className="space-y-2 animate-slide-up opacity-0">
-                                <label className="block text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Enter OTP to Confirm</label>
+                            <div className="space-y-3 animate-slide-up">
+                                {serverOtp && (
+                                    <div className="rounded-2xl border border-orange-500/30 bg-orange-950/40 p-3.5 text-center animate-bounce-short">
+                                        <span className="block text-[10px] uppercase font-bold text-orange-400 tracking-wider mb-1">Verification Code:</span>
+                                        <span className="text-2xl font-black tracking-[0.4em] text-amber-300 font-mono">{serverOtp}</span>
+                                        <span className="block text-[10px] text-slate-400 mt-1">(Pre-filled automatically)</span>
+                                    </div>
+                                )}
+                                <label className="block text-xs font-bold uppercase tracking-[0.2em] text-slate-400 text-center">Enter Code to Confirm</label>
                                 <input
                                     type="text"
                                     required
