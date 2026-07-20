@@ -48,13 +48,17 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eventora')
         const bcrypt = require('bcryptjs');
         const Event = require('./models/Event');
         
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@eventora.com';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
+        const adminName = process.env.ADMIN_NAME || 'Platform Admin';
+
         const salt = await bcrypt.genSalt(10);
-        const adminPass = await bcrypt.hash('password123', salt);
+        const adminPass = await bcrypt.hash(adminPassword, salt);
         const userPass = await bcrypt.hash('password123', salt);
 
         const admin = await User.create({
-          name: 'Admin User',
-          email: 'admin@eventora.com',
+          name: adminName,
+          email: adminEmail,
           password: adminPass,
           role: 'admin',
           isVerified: true
@@ -80,7 +84,7 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eventora')
           image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=800',
           createdBy: admin._id
         });
-        console.log('Auto-seed complete: Created admin@eventora.com and user@eventora.com (Password: password123)');
+        console.log(`Auto-seed complete: Configured initial admin (${adminEmail}) and demo user.`);
       }
     } catch (seedErr) {
       console.error('Auto-seed error:', seedErr.message);

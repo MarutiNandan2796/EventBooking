@@ -12,7 +12,7 @@ const QUICK_REPLIES = [
     },
     {
         q: "Access Admin Dashboard?",
-        a: "To access the Admin panel, sign in with the admin credentials (admin@eventora.com / password123). You will be redirected to the panel to approve bookings or manage events."
+        a: "To access the Admin panel, sign in with your administrative credentials. Authorized admin accounts will automatically be redirected to the control center to approve bookings and manage events."
     },
     {
         q: "How to check my status?",
@@ -59,7 +59,7 @@ const Chatbot = () => {
             return "Verification codes are auto-completed instantly on screen for smooth 1-click booking and registration.";
         }
         if (lower.includes('admin') || lower.includes('panel') || lower.includes('dashboard')) {
-            return "Admins (admin@eventora.com) can manage requests in the Admin Dashboard. Regular users (user@eventora.com) can track their tickets in the User Dashboard.";
+            return "Admin users can manage events and requests in the Admin Dashboard. Regular users can track their tickets in the User Dashboard.";
         }
         if (lower.includes('cancel') || lower.includes('release')) {
             return "You can cancel bookings at any time from your User Dashboard. Click the 'Cancel Booking' button to release the seat instantly.";
