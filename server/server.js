@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
@@ -24,6 +25,17 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/promos', promoRoutes);
 
+// Serve static frontend assets in production
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(clientDist, 'index.html'));
+    }
+  });
+}
+
 // Database Connection
 mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eventora')
   .then(() => console.log('MongoDB Connected'))
@@ -31,3 +43,4 @@ mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/eventora')
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
